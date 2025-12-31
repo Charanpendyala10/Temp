@@ -68,3 +68,96 @@ This section has moved here: [https://facebook.github.io/create-react-app/docs/d
 ### `npm run build` fails to minify
 
 This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+
+
+3️⃣ Power Automate – Detailed Explanation (Most Practical)
+🎯 Goal
+
+Automatically capture every reply from Outlook related to an issue and store it in one place so you can track:
+
+Who said what
+
+When they said it
+
+Which team is delaying / denying ownership
+
+🔹 How Power Automate Works Here
+Step 1: Trigger
+
+Trigger:
+
+When a new email arrives (V3)
+
+This listens to:
+
+Inbox
+
+Shared mailbox
+
+Incident mailbox (recommended)
+
+Step 2: Identify the Issue / Incident
+
+You detect the issue using any one of these:
+
+Option A – Subject Pattern (Best)
+[INC-1023]
+[EXC-445]
+
+
+Power Automate condition:
+
+Subject contains "INC-"
+
+Option B – Keywords
+incident
+exception
+sla breach
+not from our side
+
+Step 3: Extract Key Email Data
+
+From each email, extract:
+
+Field	Why it matters
+Subject	Incident reference
+From	Which team replied
+Body	Actual comment
+Received Time	SLA tracking
+Conversation ID	Links all replies together
+
+💡 Conversation ID is the backbone — all replies in a thread share it.
+
+Step 4: Store in Central Tracking (Example: SharePoint List)
+
+SharePoint List Columns
+
+IncidentID (Text)
+ConversationID (Text)
+SenderTeam (Text)
+Comment (Multiple lines)
+ReceivedDate (DateTime)
+Status (Choice)
+
+
+Each email reply becomes one row.
+
+Step 5: Auto-Update Status (Optional but Powerful)
+
+Rules like:
+
+If comment contains “shared logs” → Status = In Progress
+
+If contains “not from our side” → Status = Ownership Conflict
+
+If mail from resolver team → Status = Resolved
+
+Step 6: Output
+
+Now you have:
+
+Full conversation history
+
+SLA timestamps
+
+Proof during audits
