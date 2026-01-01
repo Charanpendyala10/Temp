@@ -161,3 +161,97 @@ Full conversation history
 SLA timestamps
 
 Proof during audits
+
+
+
+{
+  "definition": {
+    "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+    "contentVersion": "1.0.0.0",
+    "triggers": {
+      "When_a_new_email_arrives": {
+        "type": "OpenApiConnection",
+        "inputs": {
+          "host": {
+            "connection": {
+              "name": "@parameters('$connections')['office365']['connectionId']"
+            }
+          },
+          "method": "get",
+          "path": "/v3/Mail/OnNewEmail",
+          "queries": {
+            "fetchOnlyUnread": true,
+            "folderPath": "Inbox"
+          }
+        }
+      }
+    },
+    "actions": {
+      "Filter_Incident": {
+        "type": "If",
+        "expression": {
+          "or": [
+            {
+              "contains": [
+                "@triggerBody()?['subject']",
+                "INC-"
+              ]
+            },
+            {
+              "contains": [
+                "@triggerBody()?['subject']",
+                "EXC-"
+              ]
+            }
+          ]
+        },
+        "actions": {
+          "Compose_IncidentID": {
+            "type": "Compose",
+            "inputs": "@first(match(triggerBody()?['subject'], 'INC-\\\\d+'))"
+          },
+          "Compose_Team": {
+            "type": "Compose",
+            "inputs": "@if(contains(triggerBody()?['from'], 'infra'), 'Infra', if(contains(triggerBody()?['from'], 'app'), 'App', 'Unknown'))"
+          },
+          "Compose_CleanBody": {
+            "type": "Compose",
+            "inputs": "@replace(triggerBody()?['bodyPreview'], '\\\\r\\\\n', ' ')"
+          },
+          "Compose_Status": {
+            "type": "Compose",
+            "inputs": "@if(contains(outputs('Compose_CleanBody'), 'not from our side'), 'Conflict', if(contains(outputs('Compose_CleanBody'), 'shared'), 'In Progress', 'Open'))"
+          },
+          "Create_SharePoint_Item": {
+            "type": "OpenApiConnection",
+            "inputs": {
+              "host": {
+                "connection": {
+                  "name": "@parameters('$connections')['sharepoint']['connectionId']"
+                }
+              },
+              "method": "post",
+              "path": "/datasets/@{encodeURIComponent('https://YOUR_TENANT.sharepoint.com/sites/YOUR_SITE')}/tables/@{encodeURIComponent('IncidentTracking')}/items",
+              "body": {
+                "IncidentID": "@outputs('Compose_IncidentID')",
+                "Team": "@outputs('Compose_Team')",
+                "Comment": "@outputs('Compose_CleanBody')",
+                "Date": "@triggerBody()?['receivedDateTime']",
+                "Status": "@outputs('Compose_Status')",
+                "ConversationID": "@triggerBody()?['conversationId']"
+              }
+            }
+          }
+        }
+      }
+    },
+    "outputs": {},
+    "parameters": {
+      "$connections": {
+        "type": "Object",
+        "defaultValue": {}
+      }
+    }
+  }
+}
+
