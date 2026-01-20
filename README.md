@@ -1,257 +1,282 @@
-# Getting Started with Create React App
+1. WHAT IS THE ACTUAL PROBLEM?
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+You have:
 
-## Available Scripts
+Support Excel files → contain case details
 
-In the project directory, you can run:
+Incident Excel files → contain incident details
 
-### `npm start`
+You want to:
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+Compare support cases with incidents using case ID
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+Find support cases that do NOT have incidents
 
-### `npm test`
+Filter only important priorities (P1 / P2)
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+Get a clean result Excel
 
-### `npm run build`
+Automatically send this result by email
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+You want:
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+Power Query to run locally
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+No SharePoint dependency for data
 
-### `npm run eject`
+Power Automate only to send emails
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+No repeating setup every time
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+🟢 2. FINAL DESIGN (BIG PICTURE)
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+We agreed on this architecture:
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+Local folders → raw input data
 
-## Learn More
+Local Excel (Power Query) → comparison & filtering
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+OneDrive → only to sync final output
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+Power Automate + Outlook → email
 
-### Code Splitting
+OneDrive is only a bridge, nothing more.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+🟢 3. REQUIRED FOLDER STRUCTURE (LOCAL)
 
-### Analyzing the Bundle Size
+You created (or must create):
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+Automation
+ ├─ support          ← put support Excel files here
+ ├─ incident         ← put incident Excel files here
+ └─ automation.xlsx  ← main Power Query file
 
-### Making a Progressive Web App
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+Important rule:
+👉 Both support and incident folders MUST contain at least one Excel file
+Otherwise Power Query shows an empty table.
 
-### Advanced Configuration
+🟢 4. WHAT automation.xlsx IS
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+automation.xlsx is your logic file
 
-### Deployment
+It contains:
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+Power Query connections
 
-### `npm run build` fails to minify
+Merge logic
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+Filters
 
+You build this once
 
-3️⃣ Power Automate – Detailed Explanation (Most Practical)
-🎯 Goal
+You never recreate it
 
-Automatically capture every reply from Outlook related to an issue and store it in one place so you can track:
+🟢 5. POWER QUERY — SUPPORT DATA (FROM SCRATCH)
 
-Who said what
+Now let’s recall the exact steps cleanly.
 
-When they said it
+Step 5.1 — Open automation.xlsx
 
-Which team is delaying / denying ownership
+Open Excel
 
-🔹 How Power Automate Works Here
-Step 1: Trigger
+Open automation.xlsx
 
-Trigger:
+Step 5.2 — Connect to support folder
 
-When a new email arrives (V3)
+Go to Data
 
-This listens to:
+Click Get Data
 
-Inbox
+Click From File
 
-Shared mailbox
+Click From Folder
 
-Incident mailbox (recommended)
+Select the support folder
 
-Step 2: Identify the Issue / Incident
+Click OK
 
-You detect the issue using any one of these:
+Click Transform Data
 
-Option A – Subject Pattern (Best)
-[INC-1023]
-[EXC-445]
+👉 Power Query Editor opens
 
+Step 5.3 — See the file list
 
-Power Automate condition:
+You now see a table with columns like:
 
-Subject contains "INC-"
-
-Option B – Keywords
-incident
-exception
-sla breach
-not from our side
-
-Step 3: Extract Key Email Data
-
-From each email, extract:
-
-Field	Why it matters
-Subject	Incident reference
-From	Which team replied
-Body	Actual comment
-Received Time	SLA tracking
-Conversation ID	Links all replies together
-
-💡 Conversation ID is the backbone — all replies in a thread share it.
-
-Step 4: Store in Central Tracking (Example: SharePoint List)
-
-SharePoint List Columns
-
-IncidentID (Text)
-ConversationID (Text)
-SenderTeam (Text)
-Comment (Multiple lines)
-ReceivedDate (DateTime)
-Status (Choice)
-
-
-Each email reply becomes one row.
-
-Step 5: Auto-Update Status (Optional but Powerful)
-
-Rules like:
-
-If comment contains “shared logs” → Status = In Progress
-
-If contains “not from our side” → Status = Ownership Conflict
-
-If mail from resolver team → Status = Resolved
-
-Step 6: Output
-
-Now you have:
-
-Full conversation history
-
-SLA timestamps
-
-Proof during audits
-
-
-
-{
-  "definition": {
-    "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
-    "contentVersion": "1.0.0.0",
-    "triggers": {
-      "When_a_new_email_arrives": {
-        "type": "OpenApiConnection",
-        "inputs": {
-          "host": {
-            "connection": {
-              "name": "@parameters('$connections')['office365']['connectionId']"
-            }
-          },
-          "method": "get",
-          "path": "/v3/Mail/OnNewEmail",
-          "queries": {
-            "fetchOnlyUnread": true,
-            "folderPath": "Inbox"
-          }
-        }
-      }
-    },
-    "actions": {
-      "Filter_Incident": {
-        "type": "If",
-        "expression": {
-          "or": [
-            {
-              "contains": [
-                "@triggerBody()?['subject']",
-                "INC-"
-              ]
-            },
-            {
-              "contains": [
-                "@triggerBody()?['subject']",
-                "EXC-"
-              ]
-            }
-          ]
-        },
-        "actions": {
-          "Compose_IncidentID": {
-            "type": "Compose",
-            "inputs": "@first(match(triggerBody()?['subject'], 'INC-\\\\d+'))"
-          },
-          "Compose_Team": {
-            "type": "Compose",
-            "inputs": "@if(contains(triggerBody()?['from'], 'infra'), 'Infra', if(contains(triggerBody()?['from'], 'app'), 'App', 'Unknown'))"
-          },
-          "Compose_CleanBody": {
-            "type": "Compose",
-            "inputs": "@replace(triggerBody()?['bodyPreview'], '\\\\r\\\\n', ' ')"
-          },
-          "Compose_Status": {
-            "type": "Compose",
-            "inputs": "@if(contains(outputs('Compose_CleanBody'), 'not from our side'), 'Conflict', if(contains(outputs('Compose_CleanBody'), 'shared'), 'In Progress', 'Open'))"
-          },
-          "Create_SharePoint_Item": {
-            "type": "OpenApiConnection",
-            "inputs": {
-              "host": {
-                "connection": {
-                  "name": "@parameters('$connections')['sharepoint']['connectionId']"
-                }
-              },
-              "method": "post",
-              "path": "/datasets/@{encodeURIComponent('https://YOUR_TENANT.sharepoint.com/sites/YOUR_SITE')}/tables/@{encodeURIComponent('IncidentTracking')}/items",
-              "body": {
-                "IncidentID": "@outputs('Compose_IncidentID')",
-                "Team": "@outputs('Compose_Team')",
-                "Comment": "@outputs('Compose_CleanBody')",
-                "Date": "@triggerBody()?['receivedDateTime']",
-                "Status": "@outputs('Compose_Status')",
-                "ConversationID": "@triggerBody()?['conversationId']"
-              }
-            }
-          }
-        }
-      }
-    },
-    "outputs": {},
-    "parameters": {
-      "$connections": {
-        "type": "Object",
-        "defaultValue": {}
-      }
-    }
-  }
-}
+Name
 
+Extension
+
+Date modified
+
+Folder Path
+
+Content
+
+If this table is empty → folder has no Excel files (this caused confusion earlier).
+
+Step 5.4 — Pick the latest support file
+
+Sort Date modified → Descending
+
+Go to Home → Keep Rows → Keep Top Rows
+
+Enter 1 → OK
+
+Now only one row remains.
+
+Step 5.5 — Open the Excel file (Binary step)
+
+Go to the Content column
+
+Click the word “Binary” inside the cell
+(this was the step you couldn’t find earlier)
+
+A new dialog opens.
+
+Step 5.6 — Select the sheet (THIS is where OK is)
+
+Select Sheet1$ (or the correct sheet)
+
+Click OK (or Load)
+
+Now the actual support data appears.
+
+Step 5.7 — FIX COLUMN NAMES (VERY IMPORTANT)
+
+At first you see:
+
+Column1, Column2, Column3
+
+
+This happens because headers are not promoted yet.
+
+Click Home
+
+Click Use First Row as Headers
+
+Now real column names appear.
+
+Step 5.8 — Rename query
+
+On the right panel
+
+Rename query to:
+
+Latest_Support
+
+🟢 6. POWER QUERY — INCIDENT DATA (SAME PROCESS)
+
+Repeat exact same steps for the incident folder:
+
+Data → Get Data → From Folder
+
+Select incident folder
+
+Transform Data
+
+Sort by Date modified
+
+Keep Top 1 row
+
+Click Binary
+
+Select sheet → OK
+
+Click Use First Row as Headers
+
+Rename query to:
+
+Latest_Incident
+
+🟢 7. MERGE (THIS REPLACES VLOOKUP)
+
+Now you have two clean queries.
+
+Merge steps:
+
+Click Home → Merge Queries
+
+First table: Latest_Support
+
+Second table: Latest_Incident
+
+Click:
+
+case ID (support)
+
+GCP tickets (case ID from file 1) (incident)
+
+Join type: Left Outer
+
+Click OK
+
+🟢 8. EXPAND + FILTER (YOU WERE RIGHT ABOUT FILTER)
+Expand:
+
+Click expand icon on merged column
+
+Select Incident Reference Number
+
+Click OK
+
+Filter missing incidents:
+
+On Incident Reference Number
+
+Filter → select (null) only
+
+Filter priority (optional but typical):
+
+On Priority
+
+Select P1 and P2
+
+Now the table shows exactly what you want.
+
+🟢 9. LOAD RESULT
+
+Click Home → Close & Load
+
+Load as Table
+
+New worksheet
+
+Save the file
+
+This is your final automation result.
+
+🟢 10. WHAT YOU DO EVERY NEXT TIME
+
+This is VERY simple:
+
+Put new support file into support folder
+
+Put new incident file into incident folder
+
+Open automation.xlsx
+
+Click Data → Refresh All
+
+Done
+
+No rebuilding. No re-merging. No re-filtering.
+
+🟢 WHY YOU GOT CONFUSED (IMPORTANT)
+
+You got confused because:
+
+Files were not present initially
+
+Binary appears only when files exist
+
+Headers must be promoted manually
+
+Power Query does not assume anything
+
+All of this is normal.
+
+🟢 ONE-LINE SUMMARY (REMEMBER THIS)
+
+Put files in folders → Power Query reads latest → Promote headers → Merge → Filter → Load → Refresh only next time
