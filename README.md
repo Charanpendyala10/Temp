@@ -280,3 +280,15 @@ All of this is normal.
 🟢 ONE-LINE SUMMARY (REMEMBER THIS)
 
 Put files in folders → Power Query reads latest → Promote headers → Merge → Filter → Load → Refresh only next time
+
+
+
+replace(
+  outputs('Compose-body'),
+  '{{IMAGE_HERE}}',
+  concat(
+    '<img src="data:image/jpeg;base64,',
+    body('Get-file-content-image'),
+    '" width="700" />'
+  )
+)
